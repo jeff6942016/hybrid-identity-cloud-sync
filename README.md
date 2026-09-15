@@ -64,49 +64,67 @@ graph LR
 
 ## Build
 
-Each stage below pairs the configuration step with the reason it matters, and shows
-the process.
+Each stage below pairs the configuration step with the reason it matters. The
+headline identity milestones are shown inline; procedural build screens are
+collapsed but available for full verification.
 
 ### 1. Domain controller foundation
 
-A Windows Server VM is given a static IP (a DC's address cannot move, since it also
-serves as the domain's DNS), then promoted to a domain controller for a new forest.
+A Windows Server VM is promoted to a domain controller for a new forest, after being
+given a static IP (a DC's address cannot move, since it also serves as the domain's
+DNS).
 
 **Why it matters:** The domain controller is the authoritative source for the whole
 hybrid pipeline. Every identity that syncs to the cloud originates here, so the
-on-prem directory has to exist and be healthy before anything can flow upward.
+on-prem directory has to exist and be healthy before anything can flow upward. This
+is also the part of the portfolio that proves on-premises infrastructure skills, not
+just cloud console operation.
 
-![Static IP configured on the server](./screenshots/01-static-ip.png)
+<details>
+<summary><b>Click to view domain controller build screenshots</b></summary>
+
+<br/>
 
 ![AD DS role installation](./screenshots/02-adds-role-install.png)
 
-![Promoting the server to a domain controller](./screenshots/03-dc-promotion.png)
+![Promoting the server to a domain controller (new forest)](./screenshots/03-dc-promotion.png)
 
-![The promoted domain controller](./screenshots/04-dc-promoted.png)
+![The promoted domain controller, AD DS and DNS healthy](./screenshots/04-dc-promoted.png)
 
-### 2. Sync scope: OU, users, and UPN suffix
+</details>
 
-A dedicated organizational unit holds the users to be synced. Before creating them,
-an alternative UPN suffix matching the verified Entra domain is added, so synced
-users receive routable, sign-in-ready usernames rather than unusable internal ones.
+### 2. Sync scope: UPN suffix, OU, and users
 
-**Why it matters:** Cloud Sync scopes by organizational unit, so a dedicated OU
-gives precise control over exactly who syncs. The UPN suffix step is the common
-pitfall: an on-prem `user@corp.jefflab` UPN is non-routable and will not work as a
-cloud sign-in, so matching the UPN suffix to a verified Entra domain up front is
-what makes the synced identities actually usable.
+Before creating the users to be synced, an alternative UPN suffix matching the
+verified Entra domain is added, so synced users receive routable, sign-in-ready
+usernames rather than unusable internal ones. A dedicated organizational unit then
+holds exactly the users that should sync.
+
+**Why it matters:** The UPN suffix step is the classic hybrid pitfall: an on-prem
+`user@corp.jefflab` UPN is non-routable and will not work as a cloud sign-in, so
+matching the suffix to a verified Entra domain up front is what makes the synced
+identities actually usable. Cloud Sync scopes by organizational unit, so a dedicated
+OU gives precise control over exactly who leaves the on-prem boundary.
 
 ![Adding the verified-domain UPN suffix in AD Domains and Trusts](./screenshots/05-upn-suffix.png)
 
-![Dedicated OU with the users to be synced](./screenshots/06-sync-users-ou.png)
+<details>
+<summary><b>Click to view OU and test-user screenshots</b></summary>
 
-![A test user with the correct routable UPN](./screenshots/07-user-upn.png)
+<br/>
+
+![Dedicated OU holding the users to be synced](./screenshots/06-sync-users-ou.png)
+
+![A test user with the correct routable UPN suffix selected](./screenshots/07-user-upn.png)
+
+</details>
 
 ### 3. Provisioning agent installation
 
 The lightweight Entra provisioning agent is downloaded from the Entra admin center
 and installed directly on the domain controller (a supported configuration). During
-setup it creates a group managed service account (gMSA) to run its service.
+setup it creates a group managed service account (gMSA) to run its service. Once
+registered, it reports healthy in the portal.
 
 **Why it matters:** The agent is the only on-premises footprint of Cloud Sync. It
 makes outbound-only connections to Microsoft's cloud and auto-updates, which is what
@@ -114,13 +132,20 @@ makes Cloud Sync lightweight compared to the legacy sync engine. Running it unde
 gMSA means its credentials are managed automatically by AD rather than being a
 static password an administrator has to rotate.
 
+![Agent registered and healthy in the portal](./screenshots/11-agent-healthy.png)
+
+<details>
+<summary><b>Click to view provisioning agent install screenshots</b></summary>
+
+<br/>
+
 ![Downloading the provisioning agent from the Entra admin center](./screenshots/08-agent-download.png)
 
 ![Agent configuration wizard: selecting the Cloud Sync extension](./screenshots/09-agent-wizard.png)
 
 ![Providing domain credentials to create the gMSA](./screenshots/10-agent-gmsa.png)
 
-![Agent registered and healthy in the portal](./screenshots/11-agent-healthy.png)
+</details>
 
 ### 4. Cloud Sync configuration
 
@@ -133,9 +158,13 @@ that only intended users leave the on-prem boundary. Enabling it deliberately, a
 scoping, mirrors how a real rollout is controlled rather than syncing an entire
 directory blindly.
 
-![Creating the AD-to-Entra configuration with password hash sync](./screenshots/12-cloud-sync-config.png)
+<p float="left">
+  <img src="./screenshots/12-cloud-sync-config.png" width="48%" />
+  <img src="./screenshots/13-scope-ou.png" width="48%" />
+</p>
 
-![Scoping the configuration to the sync OU](./screenshots/13-scope-ou.png)
+The configuration syncs the `corp.jefflab` domain with password hash sync enabled
+(left), scoped to the dedicated sync OU (right).
 
 ### 5. Provisioning and verification
 
