@@ -65,7 +65,7 @@ graph LR
 ## Build
 
 Each stage below pairs the configuration step with the reason it matters, and shows
-the process, not just the end state.
+the process.
 
 ### 1. Domain controller foundation
 
